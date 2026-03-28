@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Click Game Pro</title>
+
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: sans-serif;
+      text-align: center;
+      color: white;
+      background: black;
+    }
+
+    .center-glow {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 250px;
+      height: 250px;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(circle, rgba(0,255,200,0.25), transparent 70%);
+      border-radius: 50%;
+      z-index: -2;
+      animation: pulse 3s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+      50% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+    }
+
+    .dots span {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: white;
+      border-radius: 50%;
+      opacity: 0.7;
+      filter: blur(0.5px);
+      animation: moveDot linear forwards;
+    }
+
+    @keyframes moveDot {
+      0% { transform: translate(0,0) scale(0.5); opacity: 0; }
+      20% { opacity: 1; }
+      100% { transform: translate(var(--x), var(--y)) scale(1); opacity: 0; }
+    }
+
+    .container {
+      margin-top: 60px;
+      position: relative;
+      z-index: 1;
+    }
+
+    button {
+      padding: 15px 25px;
+      font-size: 18px;
+      margin: 10px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      transform: scale(1.1);
+    }
+
+    .click-btn {
+      font-size: 22px;
+      background: #00ffcc;
+      color: black;
+      box-shadow: 0 0 20px #00ffcc;
+    }
+
+    .small-btn {
+      background: white;
+      color: black;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="center-glow"></div>
+<div class="dots" id="dots"></div>
+
+<div class="container">
+  <h1>Click Game 🎯</h1>
+
+  <p>⏱ Time: <span id="time">00:00:00</span></p>
+  <p>Score: <span id="score">0</span></p>
+  <p>🏆 Best Score: <span id="best">0</span></p>
+
+  <button class="click-btn" onclick="increaseScore()">Click Me!</button>
+
+  <br>
+
+  <button class="small-btn" onclick="resetGame()">Reset 🔄</button>
+  <button class="small-btn" onclick="shareGame()">Share 🔗</button>
+  <button class="small-btn" onclick="exitGame()">Exit ❌</button>
+</div>
+
+<script>
+let score = 0;
+let time = 0;
+let timerStarted = false;
+let timer;
+
+// BEST SCORE
+let bestScore = localStorage.getItem("bestScore") || 0;
+document.getElementById("best").innerText = bestScore;
+
+// SOUND
+const clickSound = new Audio("https://www.soundjay.com/buttons/sounds/button-16.mp3");
+
+// FORMAT TIME
+function formatTime(ms) {
+  let minutes = Math.floor(ms / 60000);
+  let seconds = Math.floor((ms % 60000) / 1000);
+  let milliseconds = Math.floor((ms % 1000) / 10);
+
+  return (
+    String(minutes).padStart(2, '0') + ":" +
+    String(seconds).padStart(2, '0') + ":" +
+    String(milliseconds).padStart(2, '0')
+  );
+}
+
+// TIMER
+function startTimer() {
+  timer = setInterval(() => {
+    time += 10;
+    document.getElementById("time").innerText = formatTime(time);
+  }, 10);
+}
+
+// CLICK
+function increaseScore() {
+  if (!timerStarted) {
+    startTimer();
+    timerStarted = true;
+  }
+
+  score++;
+  document.getElementById("score").innerText = score;
+
+  clickSound.currentTime = 0;
+  clickSound.play();
+
+  if (score > bestScore) {
+    bestScore = score;
+    localStorage.setItem("bestScore", bestScore);
+    document.getElementById("best").innerText = bestScore;
+  }
+}
+
+// GAME OVER
+function gameOver() {
+  alert("🔥 Game Over!\nScore: " + score + "\nTime: " + formatTime(time));
+}
+
+// RESET
+function resetGame() {
+  if (score > 0) gameOver();
+
+  clearInterval(timer);
+  score = 0;
+  time = 0;
+  timerStarted = false;
+
+  document.getElementById("score").innerText = score;
+  document.getElementById("time").innerText = "00:00:00";
+}
+
+// 📸 CLEAN SHARE CARD
+async function shareGame() {
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 600;
+  canvas.height = 400;
+
+  const ctx = canvas.getContext("2d");
+
+  // BG
+  const gradient = ctx.createLinearGradient(0, 0, 600, 400);
+  gradient.addColorStop(0, "#0f2027");
+  gradient.addColorStop(1, "#2c5364");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 600, 400);
+
+  // TITLE
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 40px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText("Click Game 🎯", 300, 80);
+
+  // SCORE
+  ctx.font = "bold 60px Arial";
+  ctx.fillText(score, 300, 180);
+
+  // TIME
+  ctx.font = "28px Arial";
+  ctx.fillText("Time: " + formatTime(time), 300, 230);
+
+  // QUOTE
+  ctx.fillStyle = "#00ffcc";
+  ctx.font = "bold 28px Arial";
+  ctx.fillText("Can you beat me? 🔥", 300, 300);
+
+  const dataUrl = canvas.toDataURL("image/png");
+
+  const blob = await (await fetch(dataUrl)).blob();
+  const file = new File([blob], "score.png", { type: "image/png" });
+
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    await navigator.share({
+      title: "Click Game",
+      files: [file]
+    });
+  } else {
+    const link = document.createElement("a");
+    link.href = dataUrl;
+    link.download = "my-score.png";
+    link.click();
+  }
+}
+
+// EXIT
+function exitGame() {
+  if (confirm("Exit the game?")) {
+    clearInterval(timer);
+    document.body.innerHTML = "<h2 style='color:white;'>Game Closed ❌</h2>";
+  }
+}
+
+// PARTICLES
+function createDots() {
+  const container = document.getElementById("dots");
+
+  setInterval(() => {
+    const dot = document.createElement("span");
+
+    const angle = Math.random() * 2 * Math.PI;
+    const distance = 1000 + Math.random() * 800;
+
+    const x = Math.cos(angle) * distance + "px";
+    const y = Math.sin(angle) * distance + "px";
+
+    dot.style.left = "50%";
+    dot.style.top = "50%";
+    dot.style.setProperty("--x", x);
+    dot.style.setProperty("--y", y);
+
+    dot.style.animationDuration = (2 + Math.random() * 2) + "s";
+
+    container.appendChild(dot);
+
+    setTimeout(() => dot.remove(), 4000);
+  }, 60);
+}
+
+createDots();
+</script>
+
+</body>
+</html>
